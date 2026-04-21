@@ -1,0 +1,7 @@
+flask
+groq
+pymilvus
+sentence-transformers
+openai-whisper
+python-dotenv
+werkzeug
