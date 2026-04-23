@@ -30,6 +30,17 @@ def transcribe():
 
     transcript = transcribe_audio(path)
     return jsonify({"transcript": transcript})
+    from services.embedder import chunk_and_embed
+
+@app.route("/embed", methods=["POST"])
+def embed():
+    data = request.get_json()
+    text = data.get("text", "")
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+
+    chunks, embeddings = chunk_and_embed(text)
+    return jsonify({"chunks": len(chunks), "embedding_dim": len(embeddings[0])})
 
 if __name__ == "__main__":
     app.run(debug=True)
