@@ -42,5 +42,22 @@ def embed():
     chunks, embeddings = chunk_and_embed(text)
     return jsonify({"chunks": len(chunks), "embedding_dim": len(embeddings[0])})
 
+from services.milvus_client import insert_chunks, search
+from services.embedder import chunk_and_embed
+
+@app.route("/ingest", methods=["POST"])
+def ingest():
+    data = request.get_json()
+    text = data.get("text", "")
+    source = data.get("source", "unknown")
+    source_type = data.get("source_type", "document")
+
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+
+    chunks, embeddings = chunk_and_embed(text)
+    insert_chunks(chunks, embeddings, source, source_type)
+    return jsonify({"message": "Ingested", "chunks": len(chunks)})
+
 if __name__ == "__main__":
     app.run(debug=True)
