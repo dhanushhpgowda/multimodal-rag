@@ -59,5 +59,48 @@ def ingest():
     insert_chunks(chunks, embeddings, source, source_type)
     return jsonify({"message": "Ingested", "chunks": len(chunks)})
 
+
+from services.rag import answer_question
+from services.transcriber import transcribe_audio
+from services.embedder import chunk_and_embed
+from services.milvus_client import insert_chunks
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "No file provided"}), 400
+
+    filename = file.filename
+    path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    file.save(path)
+
+    ext = filename.rsplit(".", 1)[-1].lower()
+
+    if ext in ["mp3", "wav", "m4a", "ogg", "flac"]:
+        text = transcribe_audio(path)
+        source_type = "audio"
+    elif ext in ["txt"]:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+        source_type = "document"
+    else:
+        return jsonify({"error": "Unsupported file type"}), 400
+
+    chunks, embeddings = chunk_and_embed(text)
+    insert_chunks(chunks, embeddings, filename, source_type)
+
+    return jsonify({"message": f"Processed {filename}", "chunks": len(chunks), "source_type": source_type})
+
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    data = request.get_json()
+    query = data.get("query", "")
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+    result = answer_question(query)
+    return jsonify(result)
+
 if __name__ == "__main__":
     app.run(debug=True)
